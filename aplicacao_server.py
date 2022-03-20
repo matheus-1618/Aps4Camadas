@@ -12,7 +12,10 @@
 
 from server.enlace import *
 import time
-
+from datetime import datetime
+import os
+from termcolor import colored
+os.system('color')
 from inspect import _void
 import operations.datagram as datagram
 from operations.handshake import Handshake
@@ -47,6 +50,11 @@ class Server:
         self.timeout = Timeout("server",self.com1)
         self.log = Log("Server")
         self.log_content = ""
+        self.flag1 = True 
+        self.flag2 = False
+        self.flag3 = False 
+        self.flag4 = False 
+        self.flag5 = False
         self.bytes = b''
         self.head = b''
         self.sizeHead = 0
@@ -85,23 +93,24 @@ class Server:
         while True:
             try:
                 self.sacrifice_byte()   
-                print("[yellow]\n-----Esperando handshake do Client-----\n")  
+                print(colored("\n---------------->Esperando handshake do Client\n","yellow"))  
                 if self.handshake.receive_handshake(): 
                     self.totalPackets = self.handshake.get_total_packets()
+                    time.sleep(3)
                     self.handshake.contact_client()
                     time.sleep(1)
-                    print("[blue]\n--------------------------")
-                    print("[blue]Iniciando Recepção")
-                    print("[blue]--------------------------\n")
+                    print(colored("\n---------------->Iniciando Recepção\n","blue"))  
                     return True
-                    
                 else:
-                    print("[red]Recebi algo estranho...")
+                    print(colored("\n---------------->Tempo de requisição esgotado!\n","red"))
+                    self.flag1 = False 
+                    self.flag3 = True
+                    self.log_content+=f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} /envio(timeout)/5/{14}\n'
                     self.com1.disable()
-                    return False   
+                    raise Exception
 
             except KeyboardInterrupt:
-                    print("[red]Interrupção Forçada")
+                    print(colored("\n---------------->Interrupção Forçada","red"))
                     self.com1.disable()
                     break
 
@@ -110,32 +119,52 @@ class Server:
                 self.com1.disable()
                 break   
 
+    def writeLog(self):
+        """Escreve o log de informação de acordo com a situaão ocorrida"""
+        print(colored("\n---------------->Criando arquivos de log\n","cyan"))
+        if self.flag1:
+            self.log.build(1,self.log_content)
+        if self.flag2:
+            self.log.build(2,self.log_content)
+        if self.flag3:
+            self.log.build(3,self.log_content)
+        if self.flag4:
+            self.log.build(4,self.log_content)
+        if self.flag5:
+            self.log.build(5,self.log_content)
+
     def sendAcknowledge(self,status)->_void:
         """Método de envio da mensagem de Acknowledge, confirmando se o pacote foi bem recebido
         ou solicitando um possível reenvio"""
         if status=="sucesso":
             self.nextPack()
             self.correctPack.send_confirmation(self.currentPack)
+            self.log_content+=f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} /receb/3/{len(self.head+self.payload+self.EOP)}\n'
+            self.log_content+=f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} /envio/4/{14}\n'
         elif status=="ultimo":
-            print("Último Pacote recebido com sucesso\n")
+            print(colored("[Tipo 4]Último Pacote recebido com sucesso\n","red"))
             self.correctPack.send_confirmation(self.currentPack)
+            self.log_content+=f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} /receb/3/{len(self.head+self.payload+self.EOP)}\n'
+            self.log_content+=f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} /envio/4/{14}\n'
             time.sleep(0.8)
         elif status=="sizeError":
-            print("\n------------------------------------------------------------")
-            print("Recebi arquivo com tamanho diferente...")
-            print(f"Recebi algo maior que os {self.sizepayload} bytes esperados...")
-            print("Por favor reenvie...")
-            print("------------------------------------------------------------\n")
+            print(colored(f"\n---------------->Recebi algo maior que os {self.sizepayload} bytes esperados...","red"))
+            print(colored("\n---------------->Por favor reenvie...\n","red"))
+            self.flag1 = False 
+            self.flag2 = True
+            self.log_content+=f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} /receb/3/{len(self.head+self.payload+self.EOP)}\n'
+            self.log_content+=f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} /envio/6/{14}\n'
             self.error.send_error(self.currentPack)
             self.com1.rx.clearBuffer()
             time.sleep(1)
         elif status=="packError":
-            print("\n---------------------------------------")
-            print("Recebi um pacote diferente...")
-            print(f"Pacote recebido: {self.head[4]+1}")
-            print(f"Pacote esperado: {self.currentPack+1}")
-            print("Por favor reenvie")
-            print("---------------------------------------\n")
+            print(colored(f"---------------->Pacote recebido: {self.head[4]+1}","red"))
+            print(colored(f"---------------->Pacote esperado: {self.currentPack+1}","red"))
+            print(colored("---------------->Por favor reenvie\n","red"))
+            self.flag1 = False 
+            self.flag2 = True
+            self.log_content+=f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} /receb/3/{len(self.head+self.payload+self.EOP)}\n'
+            self.log_content+=f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} /envio/6/{14}\n'
             self.error.send_error(self.currentPack)
             self.com1.rx.clearBuffer()
             time.sleep(1)
@@ -158,7 +187,7 @@ class Server:
 
     def mountFile(self)->_void:
         """Método de montagem dos bytes para formação do arquivo"""
-        print("Salvando dados no arquivo")
+        print(colored("---------------->Salvando dados no arquivo","cyan"))
         f = open(file,'wb')
         f.write(self.bytes)
         f.close()
@@ -169,21 +198,32 @@ class Server:
         if self.handShake():
             while True:
                 try:
-                    print(f"Recebendo pacote n°{self.currentPack+1}...")
+                    print(colored(f"[Tipo 3]Recebendo pacote n°{self.currentPack+1}...","blue"))
                     self.readHead()
                     if self.head == [-1]:
-                        print("[red]Tempo de requisição esgotado!")
+                        print(colored("\n---------------->Tempo de requisição esgotado!","red"))
+                        self.flag1 = False 
+                        self.flag4 = True
+                        self.log_content+=f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} /envio(timeout)/5/{14}\n'
                         self.timeout.send_error()
                         self.com1.disable()
-                        exit() 
+                        raise Exception
+
                     elif self.head == [-2]:
                         time.sleep(1)
                         self.timerFlag = True
+                        self.flag1 = False 
+                        self.flag5 = True
+                        self.log_content+=f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} /reenvio(fios retirados)/4/{14}\n'
                         self.correctPack.send_confirmation(self.currentPack-1,restart=True)
                     elif self.head[0]==5:
-                        print("[red]Tempo de requisição esgotado!")
+                        print(colored("\n---------------->Tempo de requisição esgotado!","red"))
+                        self.flag1 = False 
+                        self.flag4 = True
+                        self.log_content+=f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} /receb(timeout)/5/{14}\n'
                         self.com1.disable()
-                        exit() 
+                        raise Exception
+                         
                     elif self.check_current_Pack_is_Right():
                         self.timerFlag=False
                         self.readPayload()
@@ -192,7 +232,7 @@ class Server:
                             if self.check_EOP_in_right_place():
                                 self.sendAcknowledge("ultimo")
                                 self.bytes+=self.payload
-                                print("Encerrando Comunicação...\n")
+                                print(colored("\n---------------->Encerrando Comunicação...\n","red"))
                                 self.mountFile()
                                 self.com1.disable()
                                 break
@@ -208,7 +248,7 @@ class Server:
                         continue
                                 
                 except KeyboardInterrupt:
-                    print("Interrupção Forçada")
+                    print("\n---------------->Interrupção Forçada")
                     self.com1.disable()
                     break
                 except Exception as erro:
@@ -220,3 +260,4 @@ class Server:
 if __name__ == "__main__":
     s = Server(serialName)
     s.receiveFile()
+    s.writeLog()

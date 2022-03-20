@@ -1,6 +1,8 @@
 from inspect import _void
 from operations.datagram import Datagram
-
+import os
+from termcolor import colored
+os.system('color')
 import time
 
 class CorrectPack:
@@ -18,8 +20,8 @@ class CorrectPack:
         """Envia confirmação do recebimento adequado"""
         self.__build(packIndex)
         if restart:
-            print(f"[yellow]REENVIANDO: Dados recebidos adequadamente! Envio do pacote {packIndex+1} aprovado!")
+            print(colored(f"[Tipo 4]REENVIANDO: Dados recebidos adequadamente! Envio do pacote {packIndex+1} aprovado!\n","yellow"))
         else:
-            print(f"[yellow]Dados recebidos adequadamente! Envio do pacote {packIndex+1} aprovado!")
+            print(colored(f"[Tipo 4]Dados recebidos adequadamente! Envio do pacote {packIndex+1} aprovado!\n","green"))
         self.com.sendData(self.datagram)
         time.sleep(.5)

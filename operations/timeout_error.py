@@ -1,6 +1,5 @@
 from inspect import _void
 from operations.datagram import Datagram
-from rich import print
 import time
 
 class Timeout:
@@ -18,6 +17,5 @@ class Timeout:
     
     def send_error(self)->_void:
         self.__buildTimeout()
-        print("\n[red]Erro de Timeout! Encerrando conexão.")
         self.com.sendData(self.datagram.datagram())
-        time.sleep(.5)
+        time.sleep(.05)

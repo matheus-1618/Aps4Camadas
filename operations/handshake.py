@@ -1,7 +1,8 @@
 from inspect import _void
-from xmlrpc.client import boolean
 from operations.datagram import Datagram
-
+from termcolor import colored
+import os
+os.system('color')
 import time
 
 class Handshake:
@@ -27,14 +28,14 @@ class Handshake:
         self.numberOfPackages = numberOfPackages
         self.__buildHandshake()
         """Client envia mensagem de inicio de conexão para o server"""
-        print("[blue]--------Convidando servidor para conexão--------")
+        print(colored("\n---------------->Convidando servidor para conexão\n","blue"))
         self.com.sendData(self.datagram.datagram())
         time.sleep(.5)
 
     def contact_client(self) ->_void:
         """Server envia mensagem de inicio de conexão para o server, confirmando conexão"""
         self.__buildHandshake()
-        print("[blue]--------Enviando confirmação de recebimento ao Client--------")
+        print(colored("\n---------------->Enviando confirmação de recebimento ao Client\n","blue"))
         self.com.sendData(self.datagram.datagram())
         time.sleep(.5)
 
@@ -42,22 +43,22 @@ class Handshake:
         """Retorna o total de pacotes a serem enviados para o server"""
         return self.totalPackets
 
-    def receive_handshake(self)->boolean:
+    def receive_handshake(self)->bool:
         """Organiza recepção do handshake de acordo com a origem do envio"""
         data,_ = self.com.getData(15)
         if data==[-1]:
-            return "erro"
+            return False
 
         if self.origem=="server":
             if data[0]==1 and data[1]==16 and data[2]==18 and data[10]==self.fileId:
                 self.totalPackets = data[3]
-                print("[green]\n-----Handshake Recebido com sucesso!-----")
+                print(colored("\n---------------->Handshake Recebido com sucesso!\n","green"))
                 return True
             return False
 
         else:
             if data[0]==2 and data[1]==18 and data[2]==16 and data[10]==self.fileId:
-                print("[green]\n-----Handshake enviado com sucesso!-----")
+                print(colored("\n---------------->Handshake Enviado com sucesso!\n","green"))
                 return True
             return False
 

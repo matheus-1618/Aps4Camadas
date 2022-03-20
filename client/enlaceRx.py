@@ -70,7 +70,7 @@ class RX(object):
     def getNData(self, size, timer1, timer2):
         inicio = time.time()
         while(self.getBufferLen() < size):
-            print(f"[red]TEMPO RESTANTE DE REQUISIÇÃO: {abs(20-(time.time()-timer2)):.1f}s",end=" \r")
+            print(f"[Timer2]TEMPO RESTANTE DE REQUISIÇÃO: {abs(20-(time.time()-timer2)):.1f}s",end=" \r")
             if (time.time()-timer2)>=20:
                 return [-1]
             elif timer1 and (time.time()-inicio)>=5:

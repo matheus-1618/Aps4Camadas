@@ -12,7 +12,9 @@ from sys import argv
 
 from client.enlace import *
 import time
-
+import os
+from termcolor import colored
+os.system('color')
 from inspect import _void
 from datetime import datetime
 from operations.handshake import Handshake
@@ -67,6 +69,7 @@ class Client:
         self.currentPack+=1
 
     def sacrifice_byte(self)->_void:
+        """Método de envio do byte sacríficio"""
         time.sleep(.2)
         self.com1.sendData(b'00')
         self.com1.rx.clearBuffer()
@@ -85,11 +88,14 @@ class Client:
             try:
                 self.sacrifice_byte()
                 self.handshake.contact_server((len(self.datagrams)))
-                #time.sleep(5)
+                time.sleep(5)
                 answer = self.handshake.receive_handshake()
-                if answer == "erro":
+                if answer:
+                    print(colored("\n---------------->Iniciando Transmissão\n","magenta"))
+                    return True
+                else:
                     self.flag3 = True
-                    self.log_content+=f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} /envio/1/{len(self.datagrams)}\n'
+                    self.log_content+=f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} /envio/1/{15}\n'
                     answer = input("\nServidor inativo. Tentar novamente? S/N ")
                     self.com1.rx.clearBuffer()
                     if answer.lower()=="s":
@@ -98,18 +104,9 @@ class Client:
                         print("Encerrando comunicação...")
                         self.com1.disable()
                         break
-                if answer:
-                    print("[green]\n--------------------------")
-                    print("[green]Iniciando Transmissão")
-                    print("[green]--------------------------\n")
-                    return True
-                else:
-                    print("Recebi algo estranho...")
-                    self.com1.disable()
-                    break
 
             except KeyboardInterrupt:
-                    print("Interrupção Forçada")
+                    print("\n---------------->Interrupção Forçada")
                     self.com1.disable()
                     break
             except Exception as erro:
@@ -119,6 +116,7 @@ class Client:
 
     
     def setTimer(self)->_void:
+        """Reseta o segundo timer"""
         if not self.timerFlag:
             self.timer2 = time.time()
 
@@ -132,17 +130,16 @@ class Client:
             self.timerFlag = True
             self.flag1 = False
             self.flag5=True
-            self.log_content+=f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} /reenvio(fios retirados)/3/{len(self.datagrams[self.currentPack-1])}\n'
-            print(f"[yellow]\n\nEnviando novamente pacote nº{self.currentPack} devido ausência de resposta.")
+            self.log_content+=f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} /reenvio(fios retirados)/3/{len(self.datagrams[self.currentPack-1])}/{self.currentPack}\n'
+            print(colored(f"\n[Tipo 3]Enviando novamente pacote nº{self.currentPack} devido ausência de resposta.\n","yellow"))
             self.com1.sendData(self.datagrams[self.currentPack-1])
         elif self.acknowledge == [-1]: #Caso de finalizar conexão por timeout
-            print("[red]Tempo de requisição esgotado!")
+            print(colored("\n---------------->Tempo de requisição esgotado!\n","red"))
             self.timeout.send_error()
             self.flag1 = False
             self.flag4 = True
-            self.log_content+=f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} /envio(timeout)/5/{len(self.acknowledge)}\n'
-            self.com1.disable()
-            exit() 
+            self.log_content+=f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} /envio(timeout)/5/{14}\n'
+            raise Exception
         elif self.acknowledge[0]==4 and self.acknowledge[1]==18 and self.acknowledge[2]==16 and self.acknowledge[-4:] == self.EOP:
             self.timerFlag = False
             self.lastSucessPack = self.acknowledge[7]
@@ -157,12 +154,13 @@ class Client:
             self.sendPackaagain()
 
         elif self.acknowledge[0]==5:
-            print("[red]Tempo de requisição esgotado!")
+            print(colored("---------------->Tempo de requisição esgotado!\n","red"))
             self.com1.disable()
-            exit() 
+            raise Exception
+            
         else:
-            print("Ocorreu um erro bastante estranho...")
-            print("Encerrando comunicação")
+            print("---------------->Ocorreu um erro bastante estranho...")
+            print("---------------->Encerrando comunicação")
             self.com1.disable()
             exit() 
 
@@ -172,7 +170,7 @@ class Client:
 
     def isPackError(self)->bool:
         """Método de verificação se é o caso de erro de envio do pacote"""
-        return self.caso==2 and (self.currentPack==3 or self.currentPack==7)
+        return self.caso==2 and (self.currentPack==7)
 
     def isPayloadError(self)->bool:
         """Método de verificação se é o caso de erro de envio do tamanho do payload"""
@@ -185,37 +183,44 @@ class Client:
     def casoErroPacote(self)->_void:
         """Método que implementa o caso de envio errado de um número de pacote no head
         ao esperado pelo server (em termos de sucessividade)"""
-        self.acknowledge, sizeAck = self.com1.getData(10)
-        if self.acknowledge == packagetool.Acknowledge().buildAcknowledge("ok")[:10]:
-            self.acknowledge, sizeAck = self.com1.getData(5)
-            if self.acknowledge == packagetool.Acknowledge().buildAcknowledge("ok")[10:]:
-                print("Acknowledge recebido! Autorizado envio do próximo pacote!                      ")
-                print(f"Enviando Pacote n°{self.currentPack+1}...             \n")
-                self.com1.sendData(self.datagrams[self.currentPack+2])
-                time.sleep(.8)
-                self.nextPack()
+        self.acknowledge,_ = self.com1.getData(14,timer1=True,timer2=self.timer2)
+        if self.acknowledge[0]==4 and self.acknowledge[1]==18 and self.acknowledge[2]==16 and self.acknowledge[-4:] == self.EOP:
+            self.timerFlag = False
+            self.lastSucessPack = self.acknowledge[7]
+            self.log_content+=f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} /receb/4/{len(self.acknowledge)}\n'
+            self.com1.sendData(self.datagrams[self.currentPack+1])
+            time.sleep(.1)
+            self.currentPack-=1
+            self.caso=1
+            print(colored("[Tipo 4] Autorizado envio do próximo pacote!                      ",'green'))
+            print(colored(f"[Tipo 3]Enviando Pacote n°{self.currentPack+1}...                               \n","blue"))
+            self.log_content+=f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} /envio/3/{len(self.datagrams[self.currentPack])}/{self.currentPack+1}\n'
 
     def casoErroPayload(self)->_void:
         """Método que implementa o caso de envio incorreto do tamanho do payload
         informado no head em relação ao trnasmitido no pacote"""
-        self.acknowledge, sizeAck = self.com1.getData(10)
-        if self.acknowledge == packagetool.Acknowledge().buildAcknowledge("ok")[:10]:
-            self.acknowledge, sizeAck = self.com1.getData(5)
-            if self.acknowledge == packagetool.Acknowledge().buildAcknowledge("ok")[10:]:
-                print("Acknowledge recebido! Autorizado envio do próximo pacote!                      ")
-                print(f"Enviando Pacote n°{self.currentPack+1}...                               \n")
-                lista = list(self.datagrams[self.currentPack])
-                lista[7]=36
-                lista = bytes(lista)
-                self.com1.sendData(lista)
-                time.sleep(.8)
-                self.nextPack()
+        self.acknowledge,_ = self.com1.getData(14,timer1=True,timer2=self.timer2)
+        if self.acknowledge[0]==4 and self.acknowledge[1]==18 and self.acknowledge[2]==16 and self.acknowledge[-4:] == self.EOP:
+            self.timerFlag = False
+            self.lastSucessPack = self.acknowledge[7]
+            self.log_content+=f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} /receb/4/{len(self.acknowledge)}\n'
+            lista = list(self.datagrams[self.currentPack])
+            lista[5]=36
+            lista = bytes(lista)
+            self.com1.sendData(lista)
+            time.sleep(.1)
+            self.currentPack-=1
+            self.caso=1
+            print(colored("[Tipo 4] Autorizado envio do próximo pacote!                      ",'green'))
+            print(colored(f"[Tipo 3]Enviando Pacote n°{self.currentPack+1}...                               \n","blue"))
+            self.log_content+=f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} /envio/3/{len(self.datagrams[self.currentPack])}/{self.currentPack+1}\n'
+                       
     
     def sendCurrentpack(self)->_void:
         """Método de envio do pacote atual"""
-        print("Acknowledge recebido! Autorizado envio do próximo pacote!                      ")
-        print(f"Enviando Pacote n°{self.currentPack+1}...                               \n")
-        self.log_content+=f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} /envio/3/{len(self.datagrams[self.currentPack])}\n'
+        print(colored("[Tipo 4] Autorizado envio do próximo pacote!                      ",'green'))
+        print(colored(f"[Tipo 3]Enviando Pacote n°{self.currentPack+1}...                               \n","blue"))
+        self.log_content+=f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} /envio/3/{len(self.datagrams[self.currentPack])}/{self.currentPack+1}\n'
         self.com1.sendData(self.datagrams[self.currentPack])
         time.sleep(.1)
         self.nextPack()
@@ -224,15 +229,14 @@ class Client:
     def sendPackaagain(self)->_void:
         """Método de reenvio do pacote alertado como enviado incorretamente ao
         servidor"""
-        print("-------------------------------------------------------------------------")
-        print(f"Ocorreu algum erro durante a transmissão do pacote nº {self.packToRestart}...")
-        print("Reenviando ao server...")
-        print("--------------------------------------------------------------------------\n")
+        print(colored(f"\n-->Ocorreu algum erro durante a transmissão do pacote nº {self.packToRestart}...\n[Tipo 3]Reenviando ao server...\n","red"))
         self.com1.sendData(self.datagrams[self.packToRestart])
         self.currentPack = self.packToRestart
         time.sleep(2)
 
     def writeLog(self):
+        """Escreve o log de informação de acordo com a situaão ocorrida"""
+        print(colored("\n---------------->Criando arquivos de log\n","cyan"))
         if self.flag1:
             self.log.build(1,self.log_content)
         if self.flag2:
@@ -249,7 +253,7 @@ class Client:
         projeto"""
         self.buildDatagrams()
         if self.handShake():
-            print(f"Estaremos enviando {len(self.datagrams)} pacotes...")
+            print(colored(f"\n---------------->Estaremos enviando {len(self.datagrams)} pacotes\n","magenta"))
             while True:
                 try:
                     if self.isFirstPack():
@@ -262,8 +266,8 @@ class Client:
                         self.casoErroPayload()
                         
                     elif self.lastPack():
-                        print("Último pacote enviado\n")
-                        print("Encerrando comunicação...")
+                        print(colored("[Tipo 3]Último pacote enviado\n","yellow"))
+                        print(colored("\n---------------->Encerrando Comunicação\n","red"))
                         self.com1.disable()
                         break
                     else:
