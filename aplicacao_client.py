@@ -12,14 +12,13 @@ from sys import argv
 
 from client.enlace import *
 import time
-from rich import print
+
 from inspect import _void
-import operations.datagram as datagram
+from datetime import datetime
 from operations.handshake import Handshake
 from operations.packages_builder import PackageBuilder
 from operations.log_maker import Log
 from operations.timeout_error import Timeout
-
 
 # voce deverá descomentar e configurar a porta com através da qual ira fazer comunicaçao
 #   para saber a sua porta, execute no terminal :
@@ -35,7 +34,6 @@ jsonfile = "./files/notes.json"
 pngfile = "./files/image.png"
 
 file = pngfile
-  
 class Client:
     def __init__(self,serialname,filepath):
         self.EOP = 0xAABBCCDD.to_bytes(4,byteorder="big")
@@ -52,11 +50,16 @@ class Client:
         self.handshake = Handshake("client",self.com1,10)
         self.timeout = Timeout("client",self.com1)
         self.log = Log("Client")
+        self.log_content = ""
+        self.flag1 = True 
+        self.flag2 = False
+        self.flag3 = False 
+        self.flag4 = False 
+        self.flag5 = False
         self.caso = int(input("""Qual o caso deseja simular?
         1 - Caso de Sucesso de Transmissão ou TIMEOUT
         2 - Caso de erro de pacote
         3 - Caso de erro de tamanho do payload\n """))
-        
         self.com1.enable()
 
     def nextPack(self)->_void:
@@ -85,6 +88,8 @@ class Client:
                 #time.sleep(5)
                 answer = self.handshake.receive_handshake()
                 if answer == "erro":
+                    self.flag3 = True
+                    self.log_content+=f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} /envio/1/{len(self.datagrams)}\n'
                     answer = input("\nServidor inativo. Tentar novamente? S/N ")
                     self.com1.rx.clearBuffer()
                     if answer.lower()=="s":
@@ -125,18 +130,28 @@ class Client:
 
         if self.acknowledge == [-2]: #Caso de envio novamente do pacote por falta de inteiração do pacote
             self.timerFlag = True
+            self.flag1 = False
+            self.flag5=True
+            self.log_content+=f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} /reenvio(fios retirados)/3/{len(self.datagrams[self.currentPack-1])}\n'
             print(f"[yellow]\n\nEnviando novamente pacote nº{self.currentPack} devido ausência de resposta.")
             self.com1.sendData(self.datagrams[self.currentPack-1])
         elif self.acknowledge == [-1]: #Caso de finalizar conexão por timeout
             print("[red]Tempo de requisição esgotado!")
             self.timeout.send_error()
+            self.flag1 = False
+            self.flag4 = True
+            self.log_content+=f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} /envio(timeout)/5/{len(self.acknowledge)}\n'
             self.com1.disable()
             exit() 
         elif self.acknowledge[0]==4 and self.acknowledge[1]==18 and self.acknowledge[2]==16 and self.acknowledge[-4:] == self.EOP:
             self.timerFlag = False
             self.lastSucessPack = self.acknowledge[7]
+            self.log_content+=f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} /receb/4/{len(self.acknowledge)}\n'
             self.sendCurrentpack()
         elif self.acknowledge[0]==6 and self.acknowledge[1]==18 and self.acknowledge[2]==16 and self.acknowledge[-4:] == self.EOP:
+            self.flag2 = True 
+            self.flag1 = False
+            self.log_content+=f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} /receb/6/{len(self.acknowledge)}\n'
             self.timerFlag = False
             self.packToRestart = self.acknowledge[6]
             self.sendPackaagain()
@@ -200,6 +215,7 @@ class Client:
         """Método de envio do pacote atual"""
         print("Acknowledge recebido! Autorizado envio do próximo pacote!                      ")
         print(f"Enviando Pacote n°{self.currentPack+1}...                               \n")
+        self.log_content+=f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} /envio/3/{len(self.datagrams[self.currentPack])}\n'
         self.com1.sendData(self.datagrams[self.currentPack])
         time.sleep(.1)
         self.nextPack()
@@ -215,6 +231,18 @@ class Client:
         self.com1.sendData(self.datagrams[self.packToRestart])
         self.currentPack = self.packToRestart
         time.sleep(2)
+
+    def writeLog(self):
+        if self.flag1:
+            self.log.build(1,self.log_content)
+        if self.flag2:
+            self.log.build(2,self.log_content)
+        if self.flag3:
+            self.log.build(3,self.log_content)
+        if self.flag4:
+            self.log.build(4,self.log_content)
+        if self.flag5:
+            self.log.build(5,self.log_content)
 
     def sendFile(self)->_void:
         """Método main. Utiliza todos os métodos acima de maneira a cumprir o propósito do
@@ -250,8 +278,7 @@ class Client:
                     self.com1.disable()
                     break
 
-        
-    #so roda o main quando for executado do terminal ... se for chamado dentro de outro modulo nao roda
 if __name__ == "__main__":
     c = Client(serialName,file)
     c.sendFile()
+    c.writeLog()

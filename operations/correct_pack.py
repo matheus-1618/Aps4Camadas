@@ -1,6 +1,6 @@
 from inspect import _void
 from operations.datagram import Datagram
-from rich import print
+
 import time
 
 class CorrectPack:

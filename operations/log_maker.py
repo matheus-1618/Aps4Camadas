@@ -1,5 +1,5 @@
 from operations.datagram import Datagram
-from rich import print as show
+
 from inspect import _void
 
 class Log:
@@ -7,6 +7,6 @@ class Log:
         self.origem = origem
 
     def build(self,situation,content)->_void:
-        with open(f"logs/{self.origem}{situation}.txt","rb") as log:
+        with open(f"logs/{self.origem}{situation}.txt","w") as log:
             log.write(content)
         

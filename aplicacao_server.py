@@ -12,7 +12,7 @@
 
 from server.enlace import *
 import time
-from rich import print
+
 from inspect import _void
 import operations.datagram as datagram
 from operations.handshake import Handshake
@@ -177,6 +177,7 @@ class Server:
                         self.com1.disable()
                         exit() 
                     elif self.head == [-2]:
+                        time.sleep(1)
                         self.timerFlag = True
                         self.correctPack.send_confirmation(self.currentPack-1,restart=True)
                     elif self.head[0]==5:

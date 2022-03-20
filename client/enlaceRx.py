@@ -10,8 +10,6 @@
 # Importa pacote de tempo
 import time
 
-from rich import print
-
 # Threads
 import threading
 
