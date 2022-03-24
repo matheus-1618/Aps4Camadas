@@ -29,7 +29,7 @@ from operations.transmission_error import Error
 #use uma das 3 opcoes para atribuir à variável a porta usada
 #serialName = "/dev/tty"           # Ubuntu (variacao de)
 #serialName = "/dev/tty.usbmodem1411" # Mac    (variacao de)
-serialName = "COM5"                  # Windows(variacao de)
+serialName = "COM6"                  # Windows(variacao de)
 
 jsonfile = "./files/recebido.json"
 pngfile = "./files/recebido.png"
@@ -65,7 +65,8 @@ class Server:
         """Método de incrementação do pack a ser enviado"""
         self.currentPack+=1
 
-    def setTimer(self)->_void:
+    def setTimer(self)->_void:   
+        """Método que ativa o timeout"""
         if not self.timerFlag:
             self.timer2 = time.time()
 
@@ -83,6 +84,7 @@ class Server:
         self.eop,sizeeop = self.com1.getData(4)
 
     def sacrifice_byte(self)->_void:
+        """Método que faz o envio do byte de sacrifício no início"""
         rxBuffer, nRx = self.com1.getData(1)
         self.com1.rx.clearBuffer()
         time.sleep(1) 

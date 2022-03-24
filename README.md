@@ -61,6 +61,11 @@ Foram simulados cinco tipos de casos:
 Para montagem, use dois Arduinos uno e 5 jumpers, para ligar os terminais TX e RX cruzado de cada Arduino, e depois conecte cada arduino a um computador (ou ao mesmo se for caso, mas em portas diferentes).
 <center><img src="arduinos.jpeg"  style="float: center; margin: 0px 0px 10px 10px"></center>
 
+Caso não tenha as bibliotecas indicadas no arquivo requirements.txt realizar em um terminal:
+```console
+ borg@borg:~ pip install -r requirements.txt
+```
+
 Para realizar a simulação, abra um terminal na pasta server e execute o comando abaixo, e selecione o caso a ser simulado:
 
 ```console

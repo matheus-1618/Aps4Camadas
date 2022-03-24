@@ -234,7 +234,7 @@ class Client:
         self.currentPack = self.packToRestart
         time.sleep(2)
 
-    def writeLog(self):
+    def writeLog(self)->_void:
         """Escreve o log de informação de acordo com a situaão ocorrida"""
         print(colored("\n---------------->Criando arquivos de log\n","cyan"))
         if self.flag1:

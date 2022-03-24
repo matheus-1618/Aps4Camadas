@@ -7,6 +7,7 @@ class Log:
         self.origem = origem
 
     def build(self,situation,content)->_void:
+        """Cria arquivo de log"""
         with open(f"logs/{self.origem}{situation}.txt","w") as log:
             log.write(content)
         

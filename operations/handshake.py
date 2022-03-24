@@ -14,7 +14,7 @@ class Handshake:
         self.totalPackets = 0
         self.datagram = Datagram()
 
-    def __buildHandshake(self):
+    def __buildHandshake(self)->_void:
         "Constroi o handshake para envio, método privado"
         if self.origem=="client":
             self.datagram.head(1,16,18,numberOfPackages=self.numberOfPackages,fileId=self.fileId)

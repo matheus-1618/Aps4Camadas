@@ -11,7 +11,7 @@ class CorrectPack:
         self.datagram = b''
         self.com = com
 
-    def __build(self,packIndex):
+    def __build(self,packIndex)->_void:
         "Constroi a mensagem de resposta de sucesso de recebimento dos pacotes enviados ao server"
         self.payload.head(4,18,16,sucessPack=packIndex)
         self.datagram = self.payload.datagram()

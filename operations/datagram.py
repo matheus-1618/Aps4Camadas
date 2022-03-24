@@ -49,7 +49,7 @@ class Datagram:
         """Método de incrementação no pacote atual a ser enviado"""
         self.currentPack+=1 
 
-    def packIndexError(self,index):
+    def packIndexError(self,index)->_void:
         self.PAYLOAD = index.to_bytes(1,byteorder="big")
 
     def datagram(self) -> bytes:

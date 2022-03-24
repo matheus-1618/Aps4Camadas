@@ -16,6 +16,7 @@ class Timeout:
             self.datagram.head(5,18,16)
     
     def send_error(self)->_void:
+        """Envia o erro ao outro integrante da comunicação"""
         self.__buildTimeout()
         self.com.sendData(self.datagram.datagram())
         time.sleep(.05)
