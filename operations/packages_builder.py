@@ -1,5 +1,7 @@
 from inspect import _void
 from operations.datagram import Datagram
+from crc16 import crc16xmodem #linux 
+from crccheck.crc import Crc16 #Windows ou mac
 class PackageBuilder:
     def __init__(self,filepath):
         self.filepath = filepath
@@ -38,7 +40,9 @@ class PackageBuilder:
         self.__buildPayloads()
         for i in range(0,self.numberOfPayloads):
             self.datagram.payload(self.payloads[i])
-            self.datagram.head(3,16,18,numberOfPackages=self.numberOfPayloads)
+            crc = crc16xmodem(self.payloads[i]).to_bytes(2,byteorder="big")
+            #crc = Crc16.calc(self.payloads[i]).to_bytes(2,byteorder="big")
+            self.datagram.head(3,16,18,numberOfPackages=self.numberOfPayloads,crc=crc)
             pack = self.datagram.datagram()
             self.datagrams.append(pack)
             self.datagram.nextPackage()

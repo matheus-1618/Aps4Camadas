@@ -33,7 +33,8 @@ class Datagram:
         fileId = fileId.to_bytes(1,byteorder="big")
         packRestart = packRestart.to_bytes(1,byteorder="big")
         sucessPack = sucessPack.to_bytes(1,byteorder="big")
-        crc = crc.to_bytes(2,byteorder="big")
+        if crc==0:
+            crc = crc.to_bytes(2,byteorder="big")
 
         if self.tipo != 1 or self.tipo !=2:
             self.HEAD = self.tipo+self.origem+self.destino+self.numberOfPackages+currentPack+datasize+packRestart+sucessPack+crc

@@ -23,13 +23,16 @@ from operations.correct_pack import CorrectPack
 from operations.log_maker import Log
 from operations.timeout_error import Timeout
 from operations.transmission_error import Error
+from crc16 import crc16xmodem #linux 
+from crccheck.crc import Crc16 #Windows ou mac
 
 #   python3 -m serial.tools.list_ports
 
 #use uma das 3 opcoes para atribuir à variável a porta usada
 #serialName = "/dev/tty"           # Ubuntu (variacao de)
 #serialName = "/dev/tty.usbmodem1411" # Mac    (variacao de)
-serialName = "COM6"                  # Windows(variacao de)
+#serialName = "COM6"                  # Windows(variacao de)
+serialName = "/dev/ttyACM1"
 
 jsonfile = "./files/recebido.json"
 pngfile = "./files/recebido.png"
@@ -57,7 +60,9 @@ class Server:
         self.flag5 = False
         self.bytes = b''
         self.head = b''
+        self.payload = b''
         self.sizeHead = 0
+        self.crc_calc = b''
         self.com1.enable()
         
 
@@ -159,6 +164,16 @@ class Server:
             self.error.send_error(self.currentPack)
             self.com1.rx.clearBuffer()
             time.sleep(1)
+        elif status=="crcError":
+            print(colored(f"\n---------------->CRC ERRADO.\nESPERADO: {self.head[8:10]}\nCALCULADO: {self.crc_calc}","red"))
+            print(colored("\n---------------->Por favor reenvie...\n","red"))
+            self.flag1 = False 
+            self.flag2 = True
+            self.log_content+=f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} /receb/3/{len(self.head+self.payload+self.EOP)}\n'
+            self.log_content+=f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} /envio/6/{14}\n'
+            self.error.send_error(self.currentPack)
+            self.com1.rx.clearBuffer()
+            time.sleep(1)
         elif status=="packError":
             print(colored(f"---------------->Pacote recebido: {self.head[4]+1}","red"))
             print(colored(f"---------------->Pacote esperado: {self.currentPack+1}","red"))
@@ -177,6 +192,11 @@ class Server:
     def check_current_Pack_is_Right(self)->bool:
         """Método verificação se o pacote informado no head corresponde ao esperado"""
         return self.head[4]==self.currentPack and self.head[0]==3
+
+    def check_crc(self)->bool:
+        self.crc_calc = crc16xmodem(self.payload).to_bytes(2,byteorder="big")
+        #self.crc_calc = Crc16.calc(self.payload).to_bytes(2,byteorder="big")
+        return self.crc_calc == self.head[8:10]
             
 
     def check_EOP_in_right_place(self)->bool:
@@ -230,6 +250,11 @@ class Server:
                         self.timerFlag=False
                         self.readPayload()
                         self.readEOP()
+
+                        if not self.check_crc():
+                            self.sendAcknowledge("crcError")
+                            continue
+                        
                         if self.check_if_is_the_last_pack():
                             if self.check_EOP_in_right_place():
                                 self.sendAcknowledge("ultimo")

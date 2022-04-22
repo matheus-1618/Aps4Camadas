@@ -30,7 +30,8 @@ from operations.timeout_error import Timeout
 #use uma das 3 opcoes para atribuir à variável a porta usada
 #serialName = "/dev/tty0"           # Ubuntu (variacao de)
 #serialName = "/dev/tty.usbmodem1411" # Mac    (variacao de)
-serialName = "COM3"                  # Windows(variacao de)
+#serialName = "COM3"                  # Windows(variacao de)
+serialName = "/dev/ttyACM0"
 
 jsonfile = "./files/notes.json"
 pngfile = "./files/image.png"
@@ -61,7 +62,8 @@ class Client:
         self.caso = int(input("""Qual o caso deseja simular?
         1 - Caso de Sucesso de Transmissão ou TIMEOUT
         2 - Caso de erro de pacote
-        3 - Caso de erro de tamanho do payload\n """))
+        3 - Caso de erro de tamanho do payload
+        4 - Caso de erro de CRC\n """))
         self.com1.enable()
 
     def nextPack(self)->_void:
@@ -176,6 +178,10 @@ class Client:
         """Método de verificação se é o caso de erro de envio do tamanho do payload"""
         return self.caso==3 and self.currentPack==4
     
+    def isCrcError(self)->bool:
+        """Método de verificação se é o caso de erro de envio do tamanho do payload"""
+        return self.caso==4 and (self.currentPack==5)
+    
     def isFirstPack(self)->bool:
         """Método de verificação se o pacote é o primeiro a ser enviado"""
         return self.currentPack==0
@@ -215,7 +221,26 @@ class Client:
             print(colored(f"[Tipo 3]Enviando Pacote n°{self.currentPack+1}...                               \n","blue"))
             self.log_content+=f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} /envio/3/{len(self.datagrams[self.currentPack])}/{self.currentPack+1}\n'
                        
-    
+    def casoErroCrc(self)->_void:
+        """Método que implementa o caso de envio incorreto do CRC
+        informado no head em relação ao trnasmitido no pacote"""
+        self.acknowledge,_ = self.com1.getData(14,timer1=True,timer2=self.timer2)
+        print('entrei ERRO')
+        if self.acknowledge[0]==4 and self.acknowledge[1]==18 and self.acknowledge[2]==16 and self.acknowledge[-4:] == self.EOP:
+            self.timerFlag = False
+            self.lastSucessPack = self.acknowledge[7]
+            self.log_content+=f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} /receb/4/{len(self.acknowledge)}\n'
+            lista = list(self.datagrams[self.currentPack])
+            lista[11:] = list(self.datagrams[self.currentPack-1])[11:]
+            lista = bytes(lista)
+            self.com1.sendData(lista)
+            time.sleep(.1)
+            self.currentPack-=1
+            self.caso=1
+            print(colored("[Tipo 4] Autorizado envio do próximo pacote!                      ",'green'))
+            print(colored(f"[Tipo 3]Enviando Pacote n°{self.currentPack+1}...                               \n","blue"))
+            self.log_content+=f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} /envio/3/{len(self.datagrams[self.currentPack])}/{self.currentPack+1}\n'
+                       
     def sendCurrentpack(self)->_void:
         """Método de envio do pacote atual"""
         print(colored("[Tipo 4] Autorizado envio do próximo pacote!                      ",'green'))
@@ -264,6 +289,9 @@ class Client:
                         
                     elif self.isPayloadError():
                         self.casoErroPayload()
+                    
+                    elif self.isCrcError():
+                        self.casoErroCrc()
                         
                     elif self.lastPack():
                         print(colored("[Tipo 3]Último pacote enviado\n","yellow"))
